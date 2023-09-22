@@ -1,92 +1,242 @@
-# Permission Handler
+[![pub package](https://img.shields.io/pub/v/permission_handler.svg)](https://pub.dartlang.org/packages/permission_handler) [![Build status](https://github.com/Baseflow/flutter-permission-handler/actions/workflows/permission_handler.yaml/badge.svg?branch=master)](https://github.com/Baseflow/flutter-permission-handler/actions/workflows/permission_handler.yaml) [![style: effective dart](https://img.shields.io/badge/style-effective_dart-40c4ff.svg)](https://github.com/tenhobi/effective_dart) [![codecov](https://codecov.io/gh/Baseflow/flutter-permission-handler/branch/master/graph/badge.svg)](https://codecov.io/gh/Baseflow/flutter-permission-handler)
 
+On most operating systems, permissions aren't just granted to apps at install time.
+Rather, developers have to ask the user for permissions while the app is running.
 
+This plugin provides a cross-platform (iOS, Android) API to request permissions and check their status.
+You can also open the device's app settings so users can grant a permission.  
+On Android, you can show a rationale for requesting a permission.
 
-## Getting started
+## Setup
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+While the permissions are being requested during runtime, you'll still need to tell the OS which permissions your app might potentially use. That requires adding permission configuration to Android- and iOS-specific files.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+<details>
+<summary>Android</summary>
+  
+**Upgrade pre 1.12 Android projects**
+  
+Since version 4.4.0 this plugin is implemented using the Flutter 1.12 Android plugin APIs. Unfortunately this means App developers also need to migrate their Apps to support the new Android infrastructure. You can do so by following the [Upgrading pre 1.12 Android projects](https://github.com/flutter/flutter/wiki/Upgrading-pre-1.12-Android-projects) migration guide. Failing to do so might result in unexpected behaviour. Most common known error is the permission_handler not returning after calling the `.request()` method on a permission. 
 
-## Add your files
+**AndroidX**
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+As of version 3.1.0 the <kbd>permission_handler</kbd> plugin switched to the AndroidX version of the Android Support Libraries. This means you need to make sure your Android project is also upgraded to support AndroidX. Detailed instructions can be found [here](https://flutter.dev/docs/development/packages-and-plugins/androidx-compatibility).
 
+The TL;DR version is:
+1. Add the following to your "gradle.properties" file:
 ```
-cd existing_repo
-git remote add origin https://source.healum.com/mobile/flutter/dos/development/external/packages/permission_handler.git
-git branch -M main
-git push -uf origin main
+android.useAndroidX=true
+android.enableJetifier=true
+```
+2. Make sure you set the `compileSdkVersion` in your "android/app/build.gradle" file to 30:
+```
+android {
+  compileSdkVersion 30
+  ...
+}
+```
+3. Make sure you replace all the `android.` dependencies to their AndroidX counterparts (a full list can be found here: https://developer.android.com/jetpack/androidx/migrate).
+
+Add permissions to your `AndroidManifest.xml` file.
+There's a `debug`, `main` and `profile` version which are chosen depending on how you start your app.
+In general, it's sufficient to add permission only to the `main` version.
+[Here](https://github.com/Baseflow/flutter-permission-handler/blob/develop/permission_handler/example/android/app/src/main/AndroidManifest.xml)'s an example `AndroidManifest.xml` with a complete list of all possible permissions.
+
+</details>
+
+<details>
+<summary>iOS</summary>
+
+Add permission to your `Info.plist` file.
+[Here](https://github.com/Baseflow/flutter-permission-handler/blob/develop/permission_handler/example/ios/Runner/Info.plist)'s an example `Info.plist` with a complete list of all possible permissions.
+
+> IMPORTANT: ~~You will have to include all permission options when you want to submit your App.~~ This is because the `permission_handler` plugin touches all different SDKs and because the static code analyser (run by Apple upon App submission) detects this and will assert if it cannot find a matching permission option in the `Info.plist`. More information about this can be found [here](https://github.com/BaseflowIT/flutter-permission-handler/issues/26).
+
+The <kbd>permission_handler</kbd> plugin use [macros](https://github.com/BaseflowIT/flutter-permission-handler/blob/develop/permission_handler/ios/Classes/PermissionHandlerEnums.h) to control whether a permission is enabled.
+
+You must list permission you want to use in your application :
+
+1. Add the following to your `Podfile` file:
+   ```ruby
+   post_install do |installer|
+     installer.pods_project.targets.each do |target|
+       target.build_configurations.each do |config|
+         ... # Here are some configurations automatically generated by flutter
+   
+         # You can enable the permissions needed here. For example to enable camera
+         # permission, just remove the `#` character in front so it looks like this:
+         #
+         # ## dart: PermissionGroup.camera
+         # 'PERMISSION_CAMERA=1'
+         #
+         #  Preprocessor definitions can be found in: https://github.com/Baseflow/flutter-permission-handler/blob/master/permission_handler/ios/Classes/PermissionHandlerEnums.h
+         config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+           '$(inherited)',
+  
+           ## dart: PermissionGroup.calendar
+           # 'PERMISSION_EVENTS=1',
+  
+           ## dart: PermissionGroup.reminders
+           # 'PERMISSION_REMINDERS=1',
+  
+           ## dart: PermissionGroup.contacts
+           # 'PERMISSION_CONTACTS=1',
+  
+           ## dart: PermissionGroup.camera
+           # 'PERMISSION_CAMERA=1',
+  
+           ## dart: PermissionGroup.microphone
+           # 'PERMISSION_MICROPHONE=1',
+  
+           ## dart: PermissionGroup.speech
+           # 'PERMISSION_SPEECH_RECOGNIZER=1',
+  
+           ## dart: PermissionGroup.photos
+           # 'PERMISSION_PHOTOS=1',
+  
+           ## dart: [PermissionGroup.location, PermissionGroup.locationAlways, PermissionGroup.locationWhenInUse]
+           # 'PERMISSION_LOCATION=1',
+          
+           ## dart: PermissionGroup.notification
+           # 'PERMISSION_NOTIFICATIONS=1',
+  
+           ## dart: PermissionGroup.mediaLibrary
+           # 'PERMISSION_MEDIA_LIBRARY=1',
+  
+           ## dart: PermissionGroup.sensors
+           # 'PERMISSION_SENSORS=1',   
+           
+           ## dart: PermissionGroup.bluetooth
+           # 'PERMISSION_BLUETOOTH=1',
+   
+           ## dart: PermissionGroup.appTrackingTransparency
+           # 'PERMISSION_APP_TRACKING_TRANSPARENCY=1',
+   
+           ## dart: PermissionGroup.criticalAlerts
+           # 'PERMISSION_CRITICAL_ALERTS=1'
+         ]
+  
+       end
+     end
+   end
+   ```
+2. Remove the `#` character in front of the permission you do want to use. For example if you need access to the calendar make sure the code looks like this:
+   ```ruby
+           ## dart: PermissionGroup.calendar
+           'PERMISSION_EVENTS=1',
+   ```
+3. Delete the corresponding permission description in `Info.plist`
+   e.g. when you don't need camera permission, just delete 'NSCameraUsageDescription'
+   The following lists the relationship between `Permission` and `The key of Info.plist`:
+   | Permission                                                                                  | Info.plist                                                                                                    | Macro                                |
+   | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+   | PermissionGroup.calendar                                                                    | NSCalendarsUsageDescription                                                                                   | PERMISSION_EVENTS                    |
+   | PermissionGroup.reminders                                                                   | NSRemindersUsageDescription                                                                                   | PERMISSION_REMINDERS                 |
+   | PermissionGroup.contacts                                                                    | NSContactsUsageDescription                                                                                    | PERMISSION_CONTACTS                  |
+   | PermissionGroup.camera                                                                      | NSCameraUsageDescription                                                                                      | PERMISSION_CAMERA                    |
+   | PermissionGroup.microphone                                                                  | NSMicrophoneUsageDescription                                                                                  | PERMISSION_MICROPHONE                |
+   | PermissionGroup.speech                                                                      | NSSpeechRecognitionUsageDescription                                                                           | PERMISSION_SPEECH_RECOGNIZER         |
+   | PermissionGroup.photos                                                                      | NSPhotoLibraryUsageDescription                                                                                | PERMISSION_PHOTOS                    |
+   | PermissionGroup.location, PermissionGroup.locationAlways, PermissionGroup.locationWhenInUse | NSLocationUsageDescription, NSLocationAlwaysAndWhenInUseUsageDescription, NSLocationWhenInUseUsageDescription | PERMISSION_LOCATION                  |
+   | PermissionGroup.notification                                                                | PermissionGroupNotification                                                                                   | PERMISSION_NOTIFICATIONS             |
+   | PermissionGroup.mediaLibrary                                                                | NSAppleMusicUsageDescription, kTCCServiceMediaLibrary                                                         | PERMISSION_MEDIA_LIBRARY             |
+   | PermissionGroup.sensors                                                                     | NSMotionUsageDescription                                                                                      | PERMISSION_SENSORS                   |
+   | PermissionGroup.bluetooth                                                                   | NSBluetoothAlwaysUsageDescription, NSBluetoothPeripheralUsageDescription                                      | PERMISSION_BLUETOOTH                 |
+   | PermissionGroup.appTrackingTransparency                                                     | NSUserTrackingUsageDescription                                                                                | PERMISSION_APP_TRACKING_TRANSPARENCY |   
+   | PermissionGroup.criticalAlerts                                                              | PermissionGroupCriticalAlerts                                                                                 | PERMISSION_CRITICAL_ALERTS           |
+4. Clean & Rebuild
+
+</details>
+
+
+
+## How to use
+
+There are a number of [`Permission`](https://pub.dev/documentation/permission_handler_platform_interface/latest/permission_handler_platform_interface/Permission-class.html#constants)s.
+You can get a `Permission`'s `status`, which is either `granted`, `denied`, `restricted` or `permanentlyDenied`.
+
+```dart
+var status = await Permission.camera.status;
+if (status.isDenied) {
+  // We didn't ask for permission yet or the permission has been denied before but not permanently.
+}
+
+// You can can also directly ask the permission about its status.
+if (await Permission.location.isRestricted) {
+  // The OS restricts access, for example because of parental controls.
+}
 ```
 
-## Integrate with your tools
+Call `request()` on a `Permission` to request it.
+If it has already been granted before, nothing happens.  
+`request()` returns the new status of the `Permission`.
 
-- [ ] [Set up project integrations](https://source.healum.com/mobile/flutter/dos/development/external/packages/permission_handler/-/settings/integrations)
+```dart
+if (await Permission.contacts.request().isGranted) {
+  // Either the permission was already granted before or the user just granted it.
+}
 
-## Collaborate with your team
+// You can request multiple permissions at once.
+Map<Permission, PermissionStatus> statuses = await [
+  Permission.location,
+  Permission.storage,
+].request();
+print(statuses[Permission.location]);
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Some permissions, for example location or acceleration sensor permissions, have an associated service, which can be `enabled` or `disabled`.
 
-## Test and Deploy
+```dart
+if (await Permission.locationWhenInUse.serviceStatus.isEnabled) {
+  // Use location.
+}
+```
 
-Use the built-in continuous integration in GitLab.
+You can also open the app settings:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```dart
+if (await Permission.speech.isPermanentlyDenied) {
+  // The user opted to never again see the permission request dialog for this
+  // app. The only way to change the permission's status now is to let the
+  // user manually enable it in the system settings.
+  openAppSettings();
+}
+```
 
-***
+On Android, you can show a rationale for using a permission:
 
-# Editing this README
+```dart
+bool isShown = await Permission.contacts.shouldShowRequestRationale;
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Some permissions will not show a dialog asking the user to allow or deny the requested permission.  
+This is because the OS setting(s) of the app are being retrieved for the corresponding permission.  
+The status of the setting will determine whether the permission is `granted` or `denied`.  
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+The following permissions will show no dialog:  
 
-## Name
-Choose a self-explaining name for your project.
+- Notification
+- Bluetooth
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+The following permissions will show no dialog, but will open the corresponding setting intent for the user to change the permission status:  
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- manageExternalStorage
+- systemAlertWindow
+- requestInstallPackages
+- accessNotificationPolicy
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The `locationAlways` permission can not be requested directly, the user has to request the `locationWhenInUse` permission first.
+Accepting this permission by clicking on the 'Allow While Using App' gives the user the possibility to request the `locationAlways` permission.
+This will then bring up another permission popup asking you to `Keep Only While Using` or to `Change To Always Allow`.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## Issues
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Please file any issues, bugs or feature request as an issue on our [GitHub](https://github.com/Baseflow/flutter-permission-handler/issues) page. Commercial support is available if you need help with integration with your app or services. You can contact us at [hello@baseflow.com](mailto:hello@baseflow.com).
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Want to contribute
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+If you would like to contribute to the plugin (e.g. by improving the documentation, solving a bug or adding a cool new feature), please carefully review our [contribution guide](../CONTRIBUTING.md) and send us your [pull request](https://github.com/Baseflow/flutter-permission-handler/pulls).
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Author
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This Permission handler plugin for Flutter is developed by [Baseflow](https://baseflow.com). You can contact us at <hello@baseflow.com>
